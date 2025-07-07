@@ -1,0 +1,6 @@
+*.elf
+*.bin
+*.o
+*~
+elfldr_elf.c
+
