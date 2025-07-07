@@ -142,7 +142,6 @@ serve_elfldr(uint16_t port) {
 
     on_connection(connfd);
     close(connfd);
-    break; // TODO: keep ELF loader running.
   }
 
   return close(srvfd);
