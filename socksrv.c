@@ -14,20 +14,24 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING. If not, see
 <http://www.gnu.org/licenses/>.  */
 
+#include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <ifaddrs.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <unistd.h>
 
-#include <sys/socket.h>
 
-#include <ps4/kernel.h>
+#include <sys/socket.h>
+#include <sys/syscall.h>
+#include <sys/sysctl.h>
 
 #include "elfldr.h"
 #include "log.h"
+#include "notify.h"
 
 
 /**
@@ -149,32 +153,114 @@ serve_elfldr(uint16_t port) {
 
 
 /**
- * Entry point to the payload.
+ * Fint the pid of a process with the given name.
  **/
-int main() {
-  uint8_t qaflags[16];
-  int port = 9021;
+static pid_t
+find_pid(const char* name) {
+  int mib[4] = {1, 14, 8, 0};
+  pid_t mypid = getpid();
+  pid_t pid = -1;
+  size_t buf_size;
+  uint8_t *buf;
 
-  signal(SIGCHLD, SIG_IGN);
-  signal(SIGPIPE, SIG_IGN);
-
-  if(kernel_get_qaflags(qaflags)) {
-    perror("kernel_get_qaflags");
+  if(sysctl(mib, 4, 0, &buf_size, 0, 0)) {
+    LOG_PERROR("sysctl");
     return -1;
   }
 
-  qaflags[1] |= 3;
-  if(kernel_set_qaflags(qaflags)) {
-    perror("kernel_set_qaflags");
+  if(!(buf=malloc(buf_size))) {
+    LOG_PERROR("malloc");
     return -1;
   }
 
-  // ptrace (FW 9.00, allow req < 0x2b)
-  kernel_patch(KERNEL_ADDRESS_IMAGE_BASE + 0x41f4fd,
-	       "\x0f\x84\x19\x02\x00\x00\x4c\x8b",
-	       "\x90\x90\x90\x90\x90\x90\x4c\x8b", 8);
+  if(sysctl(mib, 4, buf, &buf_size, 0, 0)) {
+    LOG_PERROR("sysctl");
+    free(buf);
+    return -1;
+  }
 
-  return serve_elfldr(port);
+  for(uint8_t *ptr=buf; ptr<(buf+buf_size);) {
+    int ki_structsize = *(int*)ptr;
+    pid_t ki_pid = *(pid_t*)&ptr[72];
+    char *ki_tdname = (char*)&ptr[447];
+
+    ptr += ki_structsize;
+    if(!strcmp(name, ki_tdname) && ki_pid != mypid) {
+      pid = ki_pid;
+    }
+  }
+
+  free(buf);
+
+  return pid;
 }
 
 
+static int
+notify_address(const char* prefix, int port) {
+  char ip[INET_ADDRSTRLEN] = "127.0.0.1";
+  struct ifaddrs *ifaddr;
+
+  if(getifaddrs(&ifaddr) == -1) {
+    LOG_PERROR("getifaddrs");
+    return -1;
+  }
+
+  // Enumerate all AF_INET IPs
+  for(struct ifaddrs *ifa=ifaddr; ifa!=NULL; ifa=ifa->ifa_next) {
+    if(ifa->ifa_addr == NULL) {
+      continue;
+    }
+
+    if(ifa->ifa_addr->sa_family != AF_INET) {
+      continue;
+    }
+
+    struct sockaddr_in *in = (struct sockaddr_in*)ifa->ifa_addr;
+    inet_ntop(AF_INET, &(in->sin_addr), ip, sizeof(ip));
+  }
+
+  freeifaddrs(ifaddr);
+
+  notify("%s %s:%d", prefix, ip, port);
+  LOG_PRINTF("%s %s:%d\n", prefix, ip, port);
+
+  return 0;
+}
+
+
+/**
+ *
+ **/
+int main() {
+  int port = 9021;
+  pid_t pid;
+
+  LOG_PRINTF("Socket server was compiled at %s %s\n", __DATE__, __TIME__);
+
+  if(chdir("/")) {
+    LOG_PERROR("chdir");
+    return -1;
+  }
+
+  syscall(SYS_setsid);
+  while((pid=find_pid("elfldr.elf")) > 0) {
+    if(kill(pid, SIGKILL)) {
+      LOG_PERROR("kill");
+      _exit(-1);
+    }
+    sleep(1);
+  }
+
+  syscall(SYS_thr_set_name, -1, "elfldr.elf");
+  signal(SIGCHLD, SIG_IGN);
+  signal(SIGPIPE, SIG_IGN);
+
+  notify_address("Serving ELF loader on", port);
+  while(1) {
+    serve_elfldr(port);
+    sleep(3);
+  }
+
+  return 0;
+}

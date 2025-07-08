@@ -24,29 +24,24 @@ else
 endif
 
 ELF  := elfldr.elf
-BIN  := elfldr.bin
 
 CFLAGS := -fPIC -Wall -Werror -g
 
-all: $(ELF) $(BIN)
+all: $(ELF)
 
-$(ELF): socksrv.c elfldr.c pt.c
+socksrv.elf: socksrv.c elfldr.c pt.c notify.c
 	$(CC) $(CFLAGS) $^ -o $@
 
-elfldr_elf.c: elfldr.elf
+bootstrap.c: socksrv_elf.c
+
+socksrv_elf.c: socksrv.elf
 	xxd -i $^ > $@
 
-bootstrap.o: bootstrap.c elfldr_elf.c
-	$(CC) $(CFLAGS) -c -target x86_64-none-elf -ffreestanding -fno-builtin -nostdlib $< -o $@
-
-bootstrap.elf: bootstrap.o
-	ld.lld -T elf_x86_64-binldr.x -pie $^ -o $@
-
-$(BIN): bootstrap.elf
-	llvm-objcopy -O binary --only-section=.text $< $@
+$(ELF): bootstrap.c elfldr.c pt.c notify.c
+	$(CC) $(CFLAGS) $^ -o $@
 
 clean:
-	-rm -f *.o *.elf *.bin elfldr_elf.c
+	-rm -f *.o *.elf socksrv_elf.c
 
 test: $(ELF)
 	$(PS4_DEPLOY) -h $(PS4_HOST) -p $(PS4_PORT) $^
