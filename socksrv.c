@@ -236,6 +236,10 @@ int main() {
   int port = 9021;
   pid_t pid;
 
+  syscall(SYS_thr_set_name, -1, "elfldr.elf");
+  signal(SIGCHLD, SIG_IGN);
+  signal(SIGPIPE, SIG_IGN);
+
   LOG_PRINTF("Socket server was compiled at %s %s\n", __DATE__, __TIME__);
 
   if(chdir("/")) {
@@ -251,10 +255,6 @@ int main() {
     }
     sleep(1);
   }
-
-  syscall(SYS_thr_set_name, -1, "elfldr.elf");
-  signal(SIGCHLD, SIG_IGN);
-  signal(SIGPIPE, SIG_IGN);
 
   notify_address("Serving ELF loader on", port);
   while(1) {
