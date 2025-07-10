@@ -1,0 +1,9 @@
+BasedOnStyle: GNU
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+BreakBeforeBraces: Attach
+AllowShortIfStatementsOnASingleLine: false
+IndentCaseLabels: true
+SpaceBeforeParens: Never
+SpacesInContainerLiterals: false
