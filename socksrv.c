@@ -15,15 +15,15 @@ along with this program; see the file COPYING. If not, see
 <http://www.gnu.org/licenses/>.  */
 
 #include <sys/types.h>
+
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <ifaddrs.h>
+#include <netinet/in.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
-
 
 #include <sys/socket.h>
 #include <sys/syscall.h>
@@ -33,21 +33,20 @@ along with this program; see the file COPYING. If not, see
 #include "log.h"
 #include "notify.h"
 
-
 /**
  * Read an ELF file from the given file descriptor.
  **/
 static size_t
-readsock(int fd, uint8_t** elf) {
+readsock(int fd, uint8_t **elf) {
   uint8_t buf[0x4000];
-  uint8_t* data = 0;
-  uint8_t* bak = 0;
+  uint8_t *data = 0;
+  uint8_t *bak = 0;
   off_t offset = 0;
   ssize_t len;
 
-  while((len=read(fd, buf, sizeof(buf))) > 0) {
+  while((len = read(fd, buf, sizeof(buf))) > 0) {
     bak = data;
-    if(!(data=realloc(data, offset+len+1))) {
+    if(!(data = realloc(data, offset + len + 1))) {
       LOG_PERROR("realloc");
       if(bak) {
         free(bak);
@@ -73,21 +72,20 @@ readsock(int fd, uint8_t** elf) {
   return offset;
 }
 
-
 /**
  * Process connections in induvidual threads.
  **/
 static void
 on_connection(int fd) {
   int optval = 1;
-  uint8_t* elf;
+  uint8_t *elf;
   size_t len;
 
   if(setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval)) < 0) {
     return;
   }
 
-  if(!(len=readsock(fd, &elf))) {
+  if(!(len = readsock(fd, &elf))) {
     return;
   }
 
@@ -100,7 +98,6 @@ on_connection(int fd) {
   free(elf);
 }
 
-
 /**
  * Serve an ELF loader via a TCP socket on the given port.
  **/
@@ -112,12 +109,13 @@ serve_elfldr(uint16_t port) {
   int connfd;
   int srvfd;
 
-  if((srvfd=socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+  if((srvfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     LOG_PERROR("socket");
     return -1;
   }
 
-  if(setsockopt(srvfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
+  if(setsockopt(srvfd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int))
+     < 0) {
     LOG_PERROR("setsockopt");
     return -1;
   }
@@ -127,7 +125,7 @@ serve_elfldr(uint16_t port) {
   srvaddr.sin_addr.s_addr = htonl(INADDR_ANY);
   srvaddr.sin_port = htons(port);
 
-  if(bind(srvfd, (struct sockaddr*)&srvaddr, sizeof(srvaddr)) != 0) {
+  if(bind(srvfd, (struct sockaddr *)&srvaddr, sizeof(srvaddr)) != 0) {
     LOG_PERROR("bind");
     return -1;
   }
@@ -139,7 +137,7 @@ serve_elfldr(uint16_t port) {
 
   while(1) {
     socklen = sizeof(cliaddr);
-    if((connfd=accept(srvfd, (struct sockaddr*)&cliaddr, &socklen)) < 0) {
+    if((connfd = accept(srvfd, (struct sockaddr *)&cliaddr, &socklen)) < 0) {
       LOG_PERROR("accept");
       break;
     }
@@ -151,13 +149,12 @@ serve_elfldr(uint16_t port) {
   return close(srvfd);
 }
 
-
 /**
  * Fint the pid of a process with the given name.
  **/
 static pid_t
-find_pid(const char* name) {
-  int mib[4] = {1, 14, 8, 0};
+find_pid(const char *name) {
+  int mib[4] = { 1, 14, 8, 0 };
   pid_t mypid = getpid();
   pid_t pid = -1;
   size_t buf_size;
@@ -168,7 +165,7 @@ find_pid(const char* name) {
     return -1;
   }
 
-  if(!(buf=malloc(buf_size))) {
+  if(!(buf = malloc(buf_size))) {
     LOG_PERROR("malloc");
     return -1;
   }
@@ -179,10 +176,10 @@ find_pid(const char* name) {
     return -1;
   }
 
-  for(uint8_t *ptr=buf; ptr<(buf+buf_size);) {
-    int ki_structsize = *(int*)ptr;
-    pid_t ki_pid = *(pid_t*)&ptr[72];
-    char *ki_tdname = (char*)&ptr[447];
+  for(uint8_t *ptr = buf; ptr < (buf + buf_size);) {
+    int ki_structsize = *(int *)ptr;
+    pid_t ki_pid = *(pid_t *)&ptr[72];
+    char *ki_tdname = (char *)&ptr[447];
 
     ptr += ki_structsize;
     if(!strcmp(name, ki_tdname) && ki_pid != mypid) {
@@ -195,9 +192,8 @@ find_pid(const char* name) {
   return pid;
 }
 
-
 static int
-notify_address(const char* prefix, int port) {
+notify_address(const char *prefix, int port) {
   char ip[INET_ADDRSTRLEN] = "127.0.0.1";
   struct ifaddrs *ifaddr;
 
@@ -207,7 +203,7 @@ notify_address(const char* prefix, int port) {
   }
 
   // Enumerate all AF_INET IPs
-  for(struct ifaddrs *ifa=ifaddr; ifa!=NULL; ifa=ifa->ifa_next) {
+  for(struct ifaddrs *ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
     if(ifa->ifa_addr == NULL) {
       continue;
     }
@@ -216,7 +212,7 @@ notify_address(const char* prefix, int port) {
       continue;
     }
 
-    struct sockaddr_in *in = (struct sockaddr_in*)ifa->ifa_addr;
+    struct sockaddr_in *in = (struct sockaddr_in *)ifa->ifa_addr;
     inet_ntop(AF_INET, &(in->sin_addr), ip, sizeof(ip));
   }
 
@@ -228,11 +224,11 @@ notify_address(const char* prefix, int port) {
   return 0;
 }
 
-
 /**
  *
  **/
-int main() {
+int
+main() {
   int port = 9021;
   pid_t pid;
 
@@ -248,7 +244,7 @@ int main() {
   }
 
   syscall(SYS_setsid);
-  while((pid=find_pid("elfldr.elf")) > 0) {
+  while((pid = find_pid("elfldr.elf")) > 0) {
     if(kill(pid, SIGKILL)) {
       LOG_PERROR("kill");
       _exit(-1);

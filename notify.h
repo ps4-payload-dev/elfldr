@@ -16,5 +16,4 @@ along with this program; see the file COPYING. If not, see
 
 #pragma once
 
-
 void notify(const char *fmt, ...);

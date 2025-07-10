@@ -24,26 +24,29 @@ along with this program; see the file COPYING. If not, see
 
 #include "pt.h"
 
-
 /**
  * Log to stdout and klog
  **/
-#define LOG_PUTS(s) {					\
-    puts(s);						\
-    klog_puts(s);					\
+#define LOG_PUTS(s)                                                           \
+  {                                                                           \
+    puts(s);                                                                  \
+    klog_puts(s);                                                             \
   }
 
-#define LOG_PRINTF(s, ...) {				\
-    printf(s, __VA_ARGS__);				\
-    klog_printf(s, __VA_ARGS__);			\
+#define LOG_PRINTF(s, ...)                                                    \
+  {                                                                           \
+    printf(s, __VA_ARGS__);                                                   \
+    klog_printf(s, __VA_ARGS__);                                              \
   }
 
-#define LOG_PERROR(s) {							\
-    printf("%s:%d:%s: %s\n", __FILE__, __LINE__, s, strerror(errno));	\
-    klog_printf("%s:%d:%s: %s\n", __FILE__, __LINE__, s, strerror(errno)); \
+#define LOG_PERROR(s)                                                         \
+  {                                                                           \
+    printf("%s:%d:%s: %s\n", __FILE__, __LINE__, s, strerror(errno));         \
+    klog_printf("%s:%d:%s: %s\n", __FILE__, __LINE__, s, strerror(errno));    \
   }
 
-#define LOG_PT_PERROR(pid, s) {						\
-    printf("%s:%d:%s: unknown error\n", __FILE__, __LINE__, s); \
-    klog_printf("%s:%d:%s: unknown error\n", __FILE__, __LINE__, s); \
+#define LOG_PT_PERROR(pid, s)                                                 \
+  {                                                                           \
+    printf("%s:%d:%s: unknown error\n", __FILE__, __LINE__, s);               \
+    klog_printf("%s:%d:%s: unknown error\n", __FILE__, __LINE__, s);          \
   }

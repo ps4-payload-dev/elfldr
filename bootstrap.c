@@ -27,7 +27,6 @@ along with this program; see the file COPYING. If not, see
 
 #include "socksrv_elf.c"
 
-
 /**
  * Entry point to the payload.
  **/
@@ -35,72 +34,69 @@ int
 main(void) {
   unsigned int fw = kernel_get_fw_version();
   intptr_t ptrace_patch = 0; // (req < 0x2b)
-  const char *pattern = 0;
   uint8_t qaflags[16];
 
   LOG_PUTS("Bootstrapping elfldr.elf...");
 
   switch(fw & 0xffff0000) {
-  case 0x5050000:
-  case 0x5500000:
-  case 0x5550000:
-  case 0x5560000:
-  case 0x6000000:
-  case 0x6200000:
-  case 0x6500000:
-  case 0x6510000:
-  case 0x6700000:
-  case 0x6710000:
-  case 0x6720000:
-    pattern = "48b8361000007e020000??????????????????????????0f84190200004c8b";
-    ptrace_patch = kernel_find_pattern(KERNEL_ADDRESS_IMAGE_BASE,
-				       kernel_get_image_size(),
-				       pattern);
-    if(ptrace_patch) {
-      ptrace_patch += 23;
-    }
-    break;
-  case 0x7000000:
-  case 0x7020000:
-  case 0x7500000:
-  case 0x7510000:
-  case 0x7550000:
-  case 0x8000000:
-  case 0x8010000:
-  case 0x8030000:
-  case 0x8500000:
-  case 0x8520000:
-  case 0x9000000:
-  case 0x9030000:
-  case 0x9040000:
-  case 0x9500000:
-  case 0x9510000:
-  case 0x9600000:
-  case 0x10000000:
-  case 0x10010000:
-  case 0x10500000:
-  case 0x10700000:
-  case 0x10710000:
-  case 0x11000000:
-  case 0x11020000:
-  case 0x11500000:
-  case 0x11520000:
-  case 0x12000000:
-  case 0x12020000:
-  case 0x12500000:
-  case 0x12520000:
-    pattern = "48b8361000007e020000??????????????????????????0f84190200004c8b";
-    ptrace_patch = kernel_find_pattern(KERNEL_ADDRESS_IMAGE_BASE,
-				       kernel_get_image_size(),
-				       pattern);
-    if(ptrace_patch) {
-      ptrace_patch += 22;
-    }
-    break;
+    case 0x5050000:
+    case 0x5500000:
+    case 0x5550000:
+    case 0x5560000:
+    case 0x6000000:
+    case 0x6200000:
+    case 0x6500000:
+    case 0x6510000:
+    case 0x6700000:
+    case 0x6710000:
+    case 0x6720000:
+      if((ptrace_patch = kernel_find_pattern(
+              KERNEL_ADDRESS_IMAGE_BASE, kernel_get_image_size(),
+              "48b8361000007e020000?????????????"
+              "?????????????0f84190200004c8b"))) {
+        ptrace_patch += 23;
+      }
+      break;
+    case 0x7000000:
+    case 0x7020000:
+    case 0x7500000:
+    case 0x7510000:
+    case 0x7550000:
+    case 0x8000000:
+    case 0x8010000:
+    case 0x8030000:
+    case 0x8500000:
+    case 0x8520000:
+    case 0x9000000:
+    case 0x9030000:
+    case 0x9040000:
+    case 0x9500000:
+    case 0x9510000:
+    case 0x9600000:
+    case 0x10000000:
+    case 0x10010000:
+    case 0x10500000:
+    case 0x10700000:
+    case 0x10710000:
+    case 0x11000000:
+    case 0x11020000:
+    case 0x11500000:
+    case 0x11520000:
+    case 0x12000000:
+    case 0x12020000:
+    case 0x12500000:
+    case 0x12520000:
+      if((ptrace_patch = kernel_find_pattern(
+              KERNEL_ADDRESS_IMAGE_BASE, kernel_get_image_size(),
+              "48b8361000007e020000??????????????????????????"
+              "0f84190200004c8b"))) {
+        ptrace_patch += 22;
+      }
+      break;
 
-  default:
-    notify("Unsupported firmware (0x%x)\n", fw);
-    return -1;
+    default:
+      notify("Unsupported firmware (0x%x)\n", fw);
+      return -1;
   }
 
   if(kernel_get_qaflags(qaflags)) {
@@ -116,9 +112,8 @@ main(void) {
 
   if(ptrace_patch) {
     LOG_PRINTF("pathing kernel at 0x%lx (ptrace)\n", ptrace_patch);
-    kernel_patch(ptrace_patch,
-		 "\x0f\x84\x19\x02\x00\x00",
-		 "\x90\x90\x90\x90\x90\x90", 6);
+    kernel_patch(ptrace_patch, "\x0f\x84\x19\x02\x00\x00",
+                 "\x90\x90\x90\x90\x90\x90", 6);
   }
 
   signal(SIGCHLD, SIG_IGN);

@@ -19,7 +19,6 @@ along with this program; see the file COPYING. If not, see
 #include <stdint.h>
 #include <unistd.h>
 
-
-int   elfldr_sanity_check(uint8_t *elf, size_t elf_size);
-pid_t elfldr_spawn(const char* progname, int stdio, uint8_t *elf);
-int   elfldr_exec(pid_t pid, int stdio, uint8_t* elf);
+int elfldr_sanity_check(uint8_t *elf, size_t elf_size);
+pid_t elfldr_spawn(const char *progname, int stdio, uint8_t *elf);
+int elfldr_exec(pid_t pid, int stdio, uint8_t *elf);

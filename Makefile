@@ -27,6 +27,9 @@ ELF  := elfldr.elf
 
 CFLAGS := -fPIC -Wall -Werror -g
 
+SRCS := $(wildcard *.c)
+SRCS += $(wildcard *.h)
+
 all: $(ELF)
 
 socksrv.elf: socksrv.c elfldr.c pt.c notify.c
@@ -46,3 +49,5 @@ clean:
 test: $(ELF)
 	$(PS4_DEPLOY) -h $(PS4_HOST) -p $(PS4_PORT) $^
 
+format: $(SRCS)
+	clang-format -i $^

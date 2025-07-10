@@ -35,36 +35,33 @@ along with this program; see the file COPYING. If not, see
 #include "log.h"
 #include "pt.h"
 
-
 /**
  * Convenient macros.
  **/
 #define ROUND_PG(x) (((x) + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1))
 #define TRUNC_PG(x) ((x) & ~(PAGE_SIZE - 1))
-#define PFLAGS(x)   ((((x) & PF_R) ? PROT_READ  : 0) | \
-		     (((x) & PF_W) ? PROT_WRITE : 0) | \
-		     (((x) & PF_X) ? PROT_EXEC  : 0))
-
+#define PFLAGS(x)                                                             \
+  ((((x) & PF_R) ? PROT_READ : 0) | (((x) & PF_W) ? PROT_WRITE : 0)           \
+   | (((x) & PF_X) ? PROT_EXEC : 0))
 
 /**
  * Context structure for the ELF loader.
  **/
 typedef struct elfldr_ctx {
-  uint8_t* elf;
-  pid_t    pid;
+  uint8_t *elf;
+  pid_t pid;
 
   intptr_t base_addr;
-  size_t   base_size;
-  void*    base_mirror;
+  size_t base_size;
+  void *base_mirror;
 } elfldr_ctx_t;
 
-
 /**
-* Parse a R_X86_64_RELATIVE relocatable.
-**/
+ * Parse a R_X86_64_RELATIVE relocatable.
+ **/
 static int
-r_relative(elfldr_ctx_t *ctx, Elf64_Rela* rela) {
-  intptr_t* loc = ctx->base_mirror + rela->r_offset;
+r_relative(elfldr_ctx_t *ctx, Elf64_Rela *rela) {
+  intptr_t *loc = ctx->base_mirror + rela->r_offset;
   intptr_t val = ctx->base_addr + rela->r_addend;
 
   *loc = val;
@@ -72,13 +69,12 @@ r_relative(elfldr_ctx_t *ctx, Elf64_Rela* rela) {
   return 0;
 }
 
-
 /**
  * Parse a PT_LOAD program header.
  **/
 static int
 data_load(elfldr_ctx_t *ctx, Elf64_Phdr *phdr) {
-  void* data = ctx->base_mirror + phdr->p_vaddr;
+  void *data = ctx->base_mirror + phdr->p_vaddr;
 
   if(!phdr->p_memsz) {
     return 0;
@@ -88,33 +84,32 @@ data_load(elfldr_ctx_t *ctx, Elf64_Phdr *phdr) {
     return 0;
   }
 
-  memcpy(data, ctx->elf+phdr->p_offset, phdr->p_filesz);
+  memcpy(data, ctx->elf + phdr->p_offset, phdr->p_filesz);
 
   return 0;
 }
-
 
 /**
  *
  **/
 int
 elfldr_sanity_check(uint8_t *elf, size_t elf_size) {
-  Elf64_Ehdr *ehdr = (Elf64_Ehdr*)elf;
+  Elf64_Ehdr *ehdr = (Elf64_Ehdr *)elf;
   Elf64_Phdr *phdr;
 
-  if(elf_size < sizeof(Elf64_Ehdr) ||
-     elf_size < sizeof(Elf64_Phdr) + ehdr->e_phoff ||
-     elf_size < sizeof(Elf64_Shdr) + ehdr->e_shoff) {
+  if(elf_size < sizeof(Elf64_Ehdr)
+     || elf_size < sizeof(Elf64_Phdr) + ehdr->e_phoff
+     || elf_size < sizeof(Elf64_Shdr) + ehdr->e_shoff) {
     return -1;
   }
 
-  if(ehdr->e_ident[0] != 0x7f || ehdr->e_ident[1] != 'E' ||
-     ehdr->e_ident[2] != 'L'  || ehdr->e_ident[3] != 'F') {
+  if(ehdr->e_ident[0] != 0x7f || ehdr->e_ident[1] != 'E'
+     || ehdr->e_ident[2] != 'L' || ehdr->e_ident[3] != 'F') {
     return -1;
   }
 
-  phdr = (Elf64_Phdr*)(elf + ehdr->e_phoff);
-  for(int i=0; i<ehdr->e_phnum; i++) {
+  phdr = (Elf64_Phdr *)(elf + ehdr->e_phoff);
+  for(int i = 0; i < ehdr->e_phnum; i++) {
     if(phdr[i].p_offset + phdr[i].p_filesz > elf_size) {
       return -1;
     }
@@ -123,17 +118,16 @@ elfldr_sanity_check(uint8_t *elf, size_t elf_size) {
   return 0;
 }
 
-
 /**
  * Load an ELF into the address space of a process with the given pid.
  **/
 static intptr_t
 elfldr_load(pid_t pid, uint8_t *elf) {
-  Elf64_Ehdr *ehdr = (Elf64_Ehdr*)elf;
-  Elf64_Phdr *phdr = (Elf64_Phdr*)(elf + ehdr->e_phoff);
-  Elf64_Shdr *shdr = (Elf64_Shdr*)(elf + ehdr->e_shoff);
+  Elf64_Ehdr *ehdr = (Elf64_Ehdr *)elf;
+  Elf64_Phdr *phdr = (Elf64_Phdr *)(elf + ehdr->e_phoff);
+  Elf64_Shdr *shdr = (Elf64_Shdr *)(elf + ehdr->e_shoff);
 
-  elfldr_ctx_t ctx = {.elf = elf, .pid=pid};
+  elfldr_ctx_t ctx = { .elf = elf, .pid = pid };
 
   size_t min_vaddr = -1;
   size_t max_vaddr = 0;
@@ -141,7 +135,7 @@ elfldr_load(pid_t pid, uint8_t *elf) {
   int error = 0;
 
   // Compute size of virtual memory region.
-  for(int i=0; i<ehdr->e_phnum; i++) {
+  for(int i = 0; i < ehdr->e_phnum; i++) {
     if(phdr[i].p_vaddr < min_vaddr) {
       min_vaddr = phdr[i].p_vaddr;
     }
@@ -167,40 +161,41 @@ elfldr_load(pid_t pid, uint8_t *elf) {
     return 0;
   }
 
-  if(!(ctx.base_mirror=malloc(ctx.base_size))) {
+  if(!(ctx.base_mirror = malloc(ctx.base_size))) {
     LOG_PERROR("malloc");
     return 0;
   }
 
   // Reserve an address space of sufficient size.
-  if((ctx.base_addr=pt_mmap(pid, ctx.base_addr, ctx.base_size, prot,
-			    flags, -1, 0)) == -1) {
+  if((ctx.base_addr
+      = pt_mmap(pid, ctx.base_addr, ctx.base_size, prot, flags, -1, 0))
+     == -1) {
     LOG_PT_PERROR(pid, "pt_mmap");
     free(ctx.base_mirror);
     return 0;
   }
 
   // Parse program headers.
-  for(int i=0; i<ehdr->e_phnum && !error; i++) {
+  for(int i = 0; i < ehdr->e_phnum && !error; i++) {
     switch(phdr[i].p_type) {
-    case PT_LOAD:
-      error = data_load(&ctx, &phdr[i]);
-      break;
+      case PT_LOAD:
+        error = data_load(&ctx, &phdr[i]);
+        break;
     }
   }
 
   // Apply relocations.
-  for(int i=0; i<ehdr->e_shnum && !error; i++) {
+  for(int i = 0; i < ehdr->e_shnum && !error; i++) {
     if(shdr[i].sh_type != SHT_RELA) {
       continue;
     }
 
-    Elf64_Rela* rela = (Elf64_Rela*)(elf + shdr[i].sh_offset);
-    for(int j=0; j<shdr[i].sh_size/sizeof(Elf64_Rela); j++) {
+    Elf64_Rela *rela = (Elf64_Rela *)(elf + shdr[i].sh_offset);
+    for(int j = 0; j < shdr[i].sh_size / sizeof(Elf64_Rela); j++) {
       switch(rela[j].r_info & 0xffffffffl) {
-      case R_X86_64_RELATIVE:
-	error = r_relative(&ctx, &rela[j]);
-	break;
+        case R_X86_64_RELATIVE:
+          error = r_relative(&ctx, &rela[j]);
+          break;
       }
     }
   }
@@ -211,13 +206,12 @@ elfldr_load(pid_t pid, uint8_t *elf) {
   }
 
   // Set protection bits on mapped segments.
-  for(int i=0; i<ehdr->e_phnum && !error; i++) {
+  for(int i = 0; i < ehdr->e_phnum && !error; i++) {
     if(phdr[i].p_type != PT_LOAD || phdr[i].p_memsz == 0) {
       continue;
     }
     if(pt_mprotect(pid, ctx.base_addr + phdr[i].p_vaddr,
-		   ROUND_PG(phdr[i].p_memsz),
-		   PFLAGS(phdr[i].p_flags))) {
+                   ROUND_PG(phdr[i].p_memsz), PFLAGS(phdr[i].p_flags))) {
       LOG_PT_PERROR(pid, "pt_mprotect");
       error = 1;
     }
@@ -238,7 +232,6 @@ elfldr_load(pid_t pid, uint8_t *elf) {
   return ctx.base_addr + ehdr->e_entry;
 }
 
-
 /**
  * Prepare registers of a process for execution of an ELF.
  **/
@@ -252,12 +245,12 @@ elfldr_prepare_exec(pid_t pid, uint8_t *elf) {
     return -1;
   }
 
-  if(!(entry=elfldr_load(pid, elf))) {
+  if(!(entry = elfldr_load(pid, elf))) {
     LOG_PUTS("elfldr_load failed");
     return -1;
   }
 
-  mdbg_setlong(pid, r.r_rsp-8, r.r_rip);
+  mdbg_setlong(pid, r.r_rsp - 8, r.r_rip);
   r.r_rsp -= 8;
   r.r_rip = entry;
 
@@ -270,14 +263,13 @@ elfldr_prepare_exec(pid_t pid, uint8_t *elf) {
   return 0;
 }
 
-
 /**
  *
  **/
 static int
 elfldr_raise_privileges(pid_t pid) {
-  unsigned char caps[16] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
-			    0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
+  unsigned char caps[16] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
   if(kernel_set_proc_rootdir(pid, KERNEL_ADDRESS_ROOTVNODE)) {
     klog_puts("kernel_set_proc_rootdir failed");
@@ -307,12 +299,11 @@ elfldr_raise_privileges(pid_t pid) {
   return 0;
 }
 
-
 /**
  * Execute an ELF inside the process with the given pid.
  **/
 int
-elfldr_exec(pid_t pid, int stdio, uint8_t* elf) {
+elfldr_exec(pid_t pid, int stdio, uint8_t *elf) {
   int error = 0;
 
   if(elfldr_raise_privileges(pid)) {
@@ -347,20 +338,19 @@ elfldr_exec(pid_t pid, int stdio, uint8_t* elf) {
   return error;
 }
 
-
 /**
  *
  **/
 static int
-elfldr_rfork_entry(void* progname) {
-  const char* SceSpZeroConf = "/system/vsh/app/NPXS21016/eboot.bin";
-  char* const argv[] = {(char*)progname, 0};
+elfldr_rfork_entry(void *progname) {
+  const char *SceSpZeroConf = "/system/vsh/app/NPXS21016/eboot.bin";
+  char *const argv[] = { (char *)progname, 0 };
 
   if(syscall(0x23b, 0)) {
     klog_perror("sys_budget_set");
     return 0;
   }
-  
+
   if(open("/dev/deci_stdin", O_RDONLY) < 0) {
     klog_perror("open");
     return 0;
@@ -385,12 +375,11 @@ elfldr_rfork_entry(void* progname) {
   return 0;
 }
 
-
 /**
  * Execute an ELF inside a new process.
  **/
 pid_t
-elfldr_spawn(const char* progname, int stdio, uint8_t* elf) {
+elfldr_spawn(const char *progname, int stdio, uint8_t *elf) {
   uint8_t int3instr = 0xcc;
   struct kevent evt;
   intptr_t brkpoint;
@@ -399,19 +388,20 @@ elfldr_spawn(const char* progname, int stdio, uint8_t* elf) {
   pid_t pid;
   int kq;
 
-  if((kq=kqueue()) < 0) {
+  if((kq = kqueue()) < 0) {
     LOG_PERROR("kqueue");
     return -1;
   }
 
-  if(!(stack=malloc(PAGE_SIZE))) {
+  if(!(stack = malloc(PAGE_SIZE))) {
     LOG_PERROR("malloc");
     close(kq);
     return -1;
   }
 
-  if((pid=rfork_thread(RFPROC | RFCFDG | RFMEM, stack+PAGE_SIZE-8,
-		       elfldr_rfork_entry, (void*)progname)) < 0) {
+  if((pid = rfork_thread(RFPROC | RFCFDG | RFMEM, stack + PAGE_SIZE - 8,
+                         elfldr_rfork_entry, (void *)progname))
+     < 0) {
     LOG_PERROR("rfork_thread");
     free(stack);
     close(kq);
@@ -438,13 +428,13 @@ elfldr_spawn(const char* progname, int stdio, uint8_t* elf) {
     return -1;
   }
 
-  //Insert a breakpoint at the eboot entry.
-  if(!(brkpoint=kernel_dynlib_entry_addr(pid, 0))) {
+  // Insert a breakpoint at the eboot entry.
+  if(!(brkpoint = kernel_dynlib_entry_addr(pid, 0))) {
     LOG_PUTS("kernel_dynlib_entry_addr failed");
     pt_detach(pid, SIGKILL);
     return -1;
   }
-  brkpoint += 58;// offset to invocation of main()
+  brkpoint += 58; // offset to invocation of main()
 
   if(mdbg_copyout(pid, brkpoint, &orginstr, sizeof(orginstr))) {
     LOG_PERROR("mdbg_copyout");

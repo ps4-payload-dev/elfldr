@@ -14,19 +14,16 @@ You should have received a copy of the GNU General Public License
 along with this program; see the file COPYING. If not, see
 <http://www.gnu.org/licenses/>.  */
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>
-
 
 typedef struct notify_request {
   char useless1[45];
   char message[3075];
 } notify_request_t;
 
-
-int sceKernelSendNotificationRequest(int, notify_request_t*, size_t, int);
-
+int sceKernelSendNotificationRequest(int, notify_request_t *, size_t, int);
 
 void
 notify(const char *fmt, ...) {
