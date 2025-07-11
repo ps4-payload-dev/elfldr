@@ -50,10 +50,10 @@ main(void) {
     case 0x6700000:
     case 0x6710000:
     case 0x6720000:
-      if((ptrace_patch = kernel_find_pattern(
-              KERNEL_ADDRESS_IMAGE_BASE, kernel_get_image_size(),
-              "48b8361000007e020000??????????????????????????"
-              "0f84190200004c8b"))) {
+      if((ptrace_patch
+          = kernel_find_pattern(KERNEL_ADDRESS_IMAGE_BASE, KERNEL_IMAGE_SIZE,
+                                "48b8361000007e020000?????????????????????????"
+                                "?0f84190200004c8b"))) {
         ptrace_patch += 23;
       }
       break;
@@ -86,10 +86,10 @@ main(void) {
     case 0x12020000:
     case 0x12500000:
     case 0x12520000:
-      if((ptrace_patch = kernel_find_pattern(
-              KERNEL_ADDRESS_IMAGE_BASE, kernel_get_image_size(),
-              "48b8361000007e020000????????????????????????"
-              "0f84190200004c8b"))) {
+      if((ptrace_patch
+          = kernel_find_pattern(KERNEL_ADDRESS_IMAGE_BASE, KERNEL_IMAGE_SIZE,
+                                "48b8361000007e020000????????????????????????"
+                                "0f84190200004c8b"))) {
         ptrace_patch += 22;
       }
       break;
