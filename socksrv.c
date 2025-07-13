@@ -30,9 +30,9 @@ along with this program; see the file COPYING. If not, see
 #include <sys/sysctl.h>
 
 #include "elfldr.h"
-#include "selfldr.h"
 #include "log.h"
 #include "notify.h"
+#include "selfldr.h"
 
 /**
  * Read an ELF file from the given file descriptor.

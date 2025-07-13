@@ -65,7 +65,7 @@ selfldr_sanity_check(uint8_t *self, size_t self_size) {
 
 typedef struct self_spawn_args {
   int stdio;
-  uint8_t* self;
+  uint8_t *self;
   size_t self_size;
 } self_spawn_args_t;
 
@@ -86,7 +86,7 @@ selfldr_rfork_entry(void *ctx) {
   }
 
   sprintf(path, "/user/temp/patload_%d.self", getpid());
-  
+
   if(rdup(ppid, args->stdio) < 0) {
     LOG_PERROR("rdup");
     return 0;
