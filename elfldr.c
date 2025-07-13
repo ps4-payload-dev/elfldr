@@ -303,7 +303,7 @@ elfldr_raise_privileges(pid_t pid) {
  * Execute an ELF inside the process with the given pid.
  **/
 int
-elfldr_exec(pid_t pid, int stdio, uint8_t *elf) {
+elfldr_exec(pid_t pid, int stdio, uint8_t *elf, size_t elf_size) {
   int error = 0;
 
   if(elfldr_raise_privileges(pid)) {
@@ -344,7 +344,7 @@ elfldr_exec(pid_t pid, int stdio, uint8_t *elf) {
 static int
 elfldr_rfork_entry(void *progname) {
   const char *SceSpZeroConf = "/system/vsh/app/NPXS21016/eboot.bin";
-  char *const argv[] = { (char *)progname, 0 };
+  char *const argv[] = { "eboot.bin", 0 };
 
   if(syscall(0x23b, 0)) {
     klog_perror("sys_budget_set");
@@ -379,7 +379,7 @@ elfldr_rfork_entry(void *progname) {
  * Execute an ELF inside a new process.
  **/
 pid_t
-elfldr_spawn(const char *progname, int stdio, uint8_t *elf) {
+elfldr_spawn(int stdio, uint8_t *elf, size_t elf_size) {
   uint8_t int3instr = 0xcc;
   struct kevent evt;
   intptr_t brkpoint;
@@ -400,7 +400,7 @@ elfldr_spawn(const char *progname, int stdio, uint8_t *elf) {
   }
 
   if((pid = rfork_thread(RFPROC | RFCFDG | RFMEM, stack + PAGE_SIZE - 8,
-                         elfldr_rfork_entry, (void *)progname))
+                         elfldr_rfork_entry, 0))
      < 0) {
     LOG_PERROR("rfork_thread");
     free(stack);
@@ -465,7 +465,7 @@ elfldr_spawn(const char *progname, int stdio, uint8_t *elf) {
   }
 
   // Execute the ELF
-  if(elfldr_exec(pid, stdio, elf)) {
+  if(elfldr_exec(pid, stdio, elf, elf_size)) {
     kill(pid, SIGKILL);
     return -1;
   }

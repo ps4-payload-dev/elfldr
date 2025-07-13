@@ -117,5 +117,5 @@ main(void) {
   }
 
   signal(SIGCHLD, SIG_IGN);
-  return elfldr_spawn("elfldr.elf", -1, socksrv_elf);
+  return elfldr_spawn(-1, socksrv_elf, socksrv_elf_len);
 }

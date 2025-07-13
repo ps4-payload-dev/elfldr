@@ -30,6 +30,7 @@ along with this program; see the file COPYING. If not, see
 #include <sys/sysctl.h>
 
 #include "elfldr.h"
+#include "selfldr.h"
 #include "log.h"
 #include "notify.h"
 
@@ -89,10 +90,14 @@ on_connection(int fd) {
     return;
   }
 
-  if(elfldr_sanity_check(elf, len)) {
-    write(fd, "Malformed ELF file\n\r\0", 34);
+  if(!elfldr_sanity_check(elf, len)) {
+    elfldr_spawn(fd, elf, len);
+
+  } else if(!selfldr_sanity_check(elf, len)) {
+    selfldr_spawn(fd, elf, len);
+
   } else {
-    elfldr_spawn("payload.elf", fd, elf);
+    write(fd, "Malformed ELF file\n\r\0", 21);
   }
 
   free(elf);

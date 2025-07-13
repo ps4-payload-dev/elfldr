@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 John Törnblom
+/* Copyright (C) 2025 John Törnblom
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -19,6 +19,5 @@ along with this program; see the file COPYING. If not, see
 #include <stdint.h>
 #include <unistd.h>
 
-int elfldr_sanity_check(uint8_t *elf, size_t elf_size);
-pid_t elfldr_spawn(int stdio, uint8_t *elf, size_t elf_size);
-int elfldr_exec(pid_t pid, int stdio, uint8_t *elf, size_t elf_size);
+int selfldr_sanity_check(uint8_t *self, size_t self_size);
+pid_t selfldr_spawn(int stdio, uint8_t *self, size_t self_size);

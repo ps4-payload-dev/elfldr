@@ -32,7 +32,7 @@ SRCS += $(wildcard *.h)
 
 all: $(ELF)
 
-socksrv.elf: socksrv.c elfldr.c pt.c notify.c
+socksrv.elf: socksrv.c elfldr.c pt.c selfldr.c notify.c
 	$(CC) $(CFLAGS) $^ -o $@
 
 bootstrap.c: socksrv_elf.c
