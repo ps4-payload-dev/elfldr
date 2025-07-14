@@ -43,3 +43,6 @@ int pt_close(pid_t pid, int fd);
 
 int pt_dup2(pid_t pid, int oldfd, int newfd);
 int pt_rdup(pid_t pid, pid_t other_pid, int fd);
+
+int pt_dynlib_get_proc_param(pid_t pid, intptr_t param_ptr, intptr_t size_ptr);
+int pt_dynlib_process_needed_and_relocate(pid_t pid);

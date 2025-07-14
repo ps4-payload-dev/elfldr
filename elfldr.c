@@ -339,6 +339,76 @@ elfldr_exec(pid_t pid, int stdio, uint8_t *elf, size_t elf_size) {
 }
 
 /**
+ * Set the heap size for libc.
+ **/
+static int
+elfldr_set_heap_size(pid_t pid, uint32_t size) {
+  intptr_t sceLibcHeapExtendedAlloc;
+  intptr_t sceLibcHeapSize;
+  intptr_t sceLibcParam;
+  intptr_t sceProcParam;
+  intptr_t buf;
+
+  if((buf = pt_mmap(pid, 0, PAGE_SIZE, PROT_READ | PROT_WRITE,
+                    MAP_ANONYMOUS | MAP_PRIVATE, -1, 0))
+     == -1) {
+    LOG_PT_PERROR(pid, "pt_mmap");
+    return -1;
+  }
+  if(pt_dynlib_get_proc_param(pid, buf, buf + 0x100)) {
+    LOG_PT_PERROR(pid, "pt_dynlib_process_needed_and_relocate");
+    pt_munmap(pid, buf, PAGE_SIZE);
+    return -1;
+  }
+  if(!(sceProcParam = mdbg_getlong(pid, buf))) {
+    LOG_PERROR("mdbg_getlong");
+    pt_munmap(pid, buf, PAGE_SIZE);
+    return -1;
+  }
+
+  if(mdbg_copyout(pid, sceProcParam + 56, &sceLibcParam,
+                  sizeof(sceLibcParam))) {
+    LOG_PERROR("mdbg_copyout");
+    pt_munmap(pid, buf, PAGE_SIZE);
+    return -1;
+  }
+
+  if(mdbg_copyout(pid, sceLibcParam + 16, &sceLibcHeapSize,
+                  sizeof(sceLibcHeapSize))) {
+    LOG_PERROR("mdbg_copyout");
+    pt_munmap(pid, buf, PAGE_SIZE);
+    return -1;
+  }
+
+  if(mdbg_setint(pid, sceLibcHeapSize, size)) {
+    LOG_PERROR("mdbg_setint");
+    pt_munmap(pid, buf, PAGE_SIZE);
+    return -1;
+  }
+
+  if(size != -1) {
+    pt_munmap(pid, buf, PAGE_SIZE);
+    return 0;
+  }
+
+  // sceLibcHeapExtendedAlloc is not allocated when using SceSpZeroConf
+  sceLibcHeapExtendedAlloc = buf;
+  if(mdbg_setlong(pid, sceLibcParam + 32, sceLibcHeapExtendedAlloc)) {
+    LOG_PERROR("mdbg_setlong");
+    pt_munmap(pid, buf, PAGE_SIZE);
+    return -1;
+  }
+
+  if(mdbg_setint(pid, sceLibcHeapExtendedAlloc, 1)) {
+    LOG_PERROR("mdbg_setint");
+    pt_munmap(pid, buf, PAGE_SIZE);
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
  *
  **/
 static int
@@ -426,6 +496,17 @@ elfldr_spawn(int stdio, uint8_t *elf, size_t elf_size) {
     LOG_PERROR("pt_attach");
     kill(pid, SIGKILL);
     return -1;
+  }
+
+  if(pt_dynlib_process_needed_and_relocate(pid)) {
+    LOG_PT_PERROR(pid, "pt_dynlib_process_needed_and_relocate");
+    pt_detach(pid, SIGKILL);
+    return -1;
+  }
+
+  // Allow libc to allocate arbitrary amount of memory.
+  if(elfldr_set_heap_size(pid, -1)) {
+    LOG_PT_PERROR(pid, "pt_dynlib_process_needed_and_relocate");
   }
 
   // Insert a breakpoint at the eboot entry.

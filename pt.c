@@ -187,3 +187,13 @@ int
 pt_rdup(pid_t pid, pid_t other_pid, int fd) {
   return (int)pt_syscall(pid, 0x25b, other_pid, fd);
 }
+
+int
+pt_dynlib_get_proc_param(pid_t pid, intptr_t param_ptr, intptr_t size_ptr) {
+  return (int)pt_syscall(pid, 0x256, param_ptr, size_ptr);
+}
+
+int
+pt_dynlib_process_needed_and_relocate(pid_t pid) {
+  return (int)pt_syscall(pid, 0x257);
+}
