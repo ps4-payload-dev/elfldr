@@ -34,44 +34,6 @@ along with this program; see the file COPYING. If not, see
 #include "notify.h"
 #include "selfldr.h"
 
-/**
- * Read an ELF file from the given file descriptor.
- **/
-static size_t
-readsock(int fd, uint8_t **elf) {
-  uint8_t buf[0x4000];
-  uint8_t *data = 0;
-  uint8_t *bak = 0;
-  off_t offset = 0;
-  ssize_t len;
-
-  while((len = read(fd, buf, sizeof(buf))) > 0) {
-    bak = data;
-    if(!(data = realloc(data, offset + len + 1))) {
-      LOG_PERROR("realloc");
-      if(bak) {
-        free(bak);
-      }
-      return 0;
-    }
-
-    memcpy(data + offset, buf, len);
-    offset += len;
-  }
-
-  if(len < 0) {
-    LOG_PERROR("read");
-    free(data);
-    return 0;
-  }
-
-  if(offset) {
-    data[offset] = 0;
-    *elf = data;
-  }
-
-  return offset;
-}
 
 /**
  * Process connections in induvidual threads.
@@ -86,21 +48,15 @@ on_connection(int fd) {
     return;
   }
 
-  if(!(len = readsock(fd, &elf))) {
-    return;
-  }
-
-  if(!elfldr_sanity_check(elf, len)) {
-    elfldr_spawn(fd, elf, len);
-
-  } else if(!selfldr_sanity_check(elf, len)) {
-    selfldr_spawn(fd, elf, len);
-
+  if(elfldr_read(fd, &elf, &len)) {
+    LOG_PERROR("elfldr_read");
+    write(fd, "[elfldr.elf] Error reading ELF file\n\r\0", 38);
   } else {
-    write(fd, "Malformed ELF file\n\r\0", 21);
+    if(elfldr_spawn(fd, elf, len) < 0) {
+      write(fd, "[elfldr.elf] Error running ELF file\n\r\0", 38);
+    }
+    free(elf);
   }
-
-  free(elf);
 }
 
 /**
