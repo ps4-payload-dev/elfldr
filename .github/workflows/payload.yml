@@ -46,7 +46,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Payload
-        path: elfldr.elf
+        path: |
+          elfldr.elf
+          elfldr.bin
         if-no-files-found: error
 
 
@@ -69,4 +71,6 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           prerelease: true
-          files: elfldr.elf
+          files: |
+            elfldr.elf
+            elfldr.bin
