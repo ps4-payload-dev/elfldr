@@ -24,27 +24,37 @@ else
 endif
 
 ELF  := elfldr.elf
+BIN  := elfldr.bin
 
 CFLAGS := -fPIC -Wall -Werror -g
 
 SRCS := $(wildcard *.c)
 SRCS += $(wildcard *.h)
 
-all: $(ELF)
+all: $(ELF) $(BIN)
 
 socksrv.elf: socksrv.c elfldr.c pt.c selfldr.c notify.c
 	$(CC) $(CFLAGS) $^ -o $@
 
-bootstrap.c: socksrv_elf.c
+bootstrap-elf.c: socksrv_elf.c
 
 socksrv_elf.c: socksrv.elf
 	xxd -i $^ > $@
 
-$(ELF): bootstrap.c elfldr.c pt.c notify.c
+elfldr_elf.c: elfldr.elf
+	xxd -i $^ > $@
+
+$(ELF): bootstrap-elf.c elfldr.c pt.c notify.c
 	$(CC) $(CFLAGS) $^ -o $@
 
+bootstrap-bin.o: elfldr_elf.c
+
+$(BIN): bootstrap-bin.o
+	$(LD) -T bin_x86_64.x -o $@ $<
+	$(OBJCOPY) -O binary --only-section=.text $@
+
 clean:
-	-rm -f *.o *.elf socksrv_elf.c
+	-rm -f *.o *.elf *.bin socksrv_elf.c elfldr_elf.c
 
 test: $(ELF)
 	$(PS4_DEPLOY) -h $(PS4_HOST) -p $(PS4_PORT) $^

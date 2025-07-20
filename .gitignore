@@ -1,5 +1,6 @@
 *.elf
+*.bin
 *.o
 *~
 socksrv_elf.c
-
+elfldr_elf.c
