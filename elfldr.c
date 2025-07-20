@@ -554,17 +554,15 @@ elfldr_spawn(int stdio, uint8_t *elf, size_t elf_size) {
   return pid;
 }
 
-
-
 /**
  * Read an ELF from a given socket.
  **/
 int
-elfldr_read(int fd, uint8_t** elf, size_t* elf_size) {
+elfldr_read(int fd, uint8_t **elf, size_t *elf_size) {
   Elf64_Shdr *shdr;
   Elf64_Ehdr ehdr;
-  uint8_t* buf;
-  uint8_t* bak;
+  uint8_t *buf;
+  uint8_t *bak;
   size_t size;
   off_t shend;
   size_t rem;
@@ -573,14 +571,14 @@ elfldr_read(int fd, uint8_t** elf, size_t* elf_size) {
     return -1;
   }
 
-  if(ehdr.e_ident[0] != 0x7f || ehdr.e_ident[1] != 'E' ||
-     ehdr.e_ident[2] != 'L'  || ehdr.e_ident[3] != 'F') {
+  if(ehdr.e_ident[0] != 0x7f || ehdr.e_ident[1] != 'E'
+     || ehdr.e_ident[2] != 'L' || ehdr.e_ident[3] != 'F') {
     errno = ENOEXEC;
     return -1;
   }
 
   size = ehdr.e_shoff + ehdr.e_shnum * sizeof(Elf64_Ehdr);
-  if(!(buf=malloc(size))) {
+  if(!(buf = malloc(size))) {
     return -1;
   }
 
@@ -592,8 +590,8 @@ elfldr_read(int fd, uint8_t** elf, size_t* elf_size) {
   }
 
   shend = 0;
-  shdr = (Elf64_Shdr*)(buf + ehdr.e_shoff);
-  for(int i=0; i<ehdr.e_shnum; i++) {
+  shdr = (Elf64_Shdr *)(buf + ehdr.e_shoff);
+  for(int i = 0; i < ehdr.e_shnum; i++) {
     if(shdr[i].sh_type == SHT_NOBITS) {
       continue;
     }
@@ -611,7 +609,7 @@ elfldr_read(int fd, uint8_t** elf, size_t* elf_size) {
   }
 
   bak = buf;
-  if(!(buf=realloc(buf, shend))) {
+  if(!(buf = realloc(buf, shend))) {
     free(bak);
     return -1;
   }

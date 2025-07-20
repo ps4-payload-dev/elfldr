@@ -32,8 +32,9 @@ along with this program; see the file COPYING. If not, see
  **/
 int
 main(void) {
-  unsigned char privcaps[16] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-				 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+  unsigned char privcaps[16]
+      = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
   unsigned int fw = kernel_get_fw_version();
   intptr_t ptrace_patch = 0; // (req < 0x2b)
   unsigned char caps[16];
@@ -123,33 +124,33 @@ main(void) {
                  "\x90\x90\x90\x90\x90\x90", 6);
   }
 
-  if((err=kernel_get_ucred_caps(-1, caps))) {
+  if((err = kernel_get_ucred_caps(-1, caps))) {
     LOG_PUTS("kernel_get_ucred_caps failed");
     return err;
   }
-  if(!(prison=kernel_get_ucred_prison(-1))) {
+  if(!(prison = kernel_get_ucred_prison(-1))) {
     LOG_PUTS("kernel_get_ucred_prison failed");
     return -1;
   }
-  if(!(rootdir=kernel_get_proc_rootdir(-1))) {
+  if(!(rootdir = kernel_get_proc_rootdir(-1))) {
     LOG_PUTS("kernel_get_proc_rootdir failed");
     return -1;
   }
-  if(!(jaildir=kernel_get_proc_jaildir(-1))) {
+  if(!(jaildir = kernel_get_proc_jaildir(-1))) {
     LOG_PUTS("kernel_get_proc_jaildir failed");
     return -1;
   }
 
-  if((err=kernel_set_ucred_caps(-1, privcaps))) {
+  if((err = kernel_set_ucred_caps(-1, privcaps))) {
     LOG_PUTS("kernel_set_ucred_caps failed");
 
-  } else if((err=kernel_set_ucred_prison(-1, KERNEL_ADDRESS_PRISON0))) {
+  } else if((err = kernel_set_ucred_prison(-1, KERNEL_ADDRESS_PRISON0))) {
     LOG_PUTS("kernel_set_proc_rootdir failed");
 
-  } else if((err=kernel_set_proc_rootdir(-1, KERNEL_ADDRESS_ROOTVNODE))) {
+  } else if((err = kernel_set_proc_rootdir(-1, KERNEL_ADDRESS_ROOTVNODE))) {
     LOG_PUTS("kernel_set_proc_rootdir failed");
 
-  } else if((err=kernel_set_proc_jaildir(-1, KERNEL_ADDRESS_ROOTVNODE))) {
+  } else if((err = kernel_set_proc_jaildir(-1, KERNEL_ADDRESS_ROOTVNODE))) {
     LOG_PUTS("kernel_set_proc_jaildir failed");
   }
 
