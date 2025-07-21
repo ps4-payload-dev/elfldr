@@ -36,7 +36,7 @@ main(void) {
       = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
   unsigned int fw = kernel_get_fw_version();
-  intptr_t ptrace_patch = 0; // (req < 0x2b)
+  intptr_t pt_patch = 0; // (req < 0x2b)
   unsigned char caps[16];
   unsigned long jaildir;
   unsigned long rootdir;
@@ -58,11 +58,11 @@ main(void) {
     case 0x6700000:
     case 0x6710000:
     case 0x6720000:
-      if((ptrace_patch = kernel_find_pattern(
+      if((pt_patch = kernel_find_pattern(
               KERNEL_ADDRESS_IMAGE_BASE, KERNEL_IMAGE_SIZE,
               "48b8361000007e020000??????????????????????????"
               "0f84????????"))) {
-        ptrace_patch += 23;
+        pt_patch += 23;
       }
       break;
     case 0x7000000:
@@ -94,11 +94,11 @@ main(void) {
     case 0x12020000:
     case 0x12500000:
     case 0x12520000:
-      if((ptrace_patch
-          = kernel_find_pattern(KERNEL_ADDRESS_IMAGE_BASE, KERNEL_IMAGE_SIZE,
-                                "48b8361000007e020000????????????????????????"
-                                "0f84190200004c8b"))) {
-        ptrace_patch += 22;
+      if((pt_patch = kernel_find_pattern(
+              KERNEL_ADDRESS_IMAGE_BASE, KERNEL_IMAGE_SIZE,
+              "48b8361000007e020000??????????????????????????"
+              "0f84190200004c8b"))) {
+        pt_patch += 22;
       }
       break;
 
@@ -118,10 +118,9 @@ main(void) {
     return -1;
   }
 
-  if(ptrace_patch) {
-    LOG_PRINTF("pathing kernel at 0x%lx (ptrace)\n", ptrace_patch);
-    kernel_patch(ptrace_patch, "\x0f\x84\x19\x02\x00\x00",
-                 "\x90\x90\x90\x90\x90\x90", 6);
+  if(pt_patch) {
+    LOG_PRINTF("pathing kernel at 0x%lx (ptrace)\n", pt_patch);
+    kernel_patch(pt_patch, 0, "\x90\x90\x90\x90\x90\x90", 6);
   }
 
   if((err = kernel_get_ucred_caps(-1, caps))) {
