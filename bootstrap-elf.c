@@ -66,6 +66,7 @@ main(void) {
       }
       break;
     case 0x7000000:
+    case 0x7010000:
     case 0x7020000:
     case 0x7500000:
     case 0x7510000:
