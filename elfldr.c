@@ -280,7 +280,7 @@ elfldr_raise_privileges(pid_t pid) {
     return -1;
   }
   if(kernel_set_ucred_prison(pid, KERNEL_ADDRESS_PRISON0)) {
-    klog_puts("kernel_set_proc_rootdir failed");
+    klog_puts("kernel_set_ucred_prison failed");
     return -1;
   }
 
