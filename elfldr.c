@@ -38,6 +38,7 @@ along with this program; see the file COPYING. If not, see
 /**
  * Convenient macros.
  **/
+#define MB(x) (x * 0x100000)
 #define ROUND_PG(x) (((x) + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1))
 #define TRUNC_PG(x) ((x) & ~(PAGE_SIZE - 1))
 #define PFLAGS(x)                                                             \
@@ -486,13 +487,13 @@ elfldr_spawn(int stdio, uint8_t *elf, size_t elf_size) {
     return -1;
   }
 
-  if(!(stack = malloc(PAGE_SIZE))) {
+  if(!(stack = malloc(MB(2)))) {
     LOG_PERROR("malloc");
     close(kq);
     return -1;
   }
 
-  if((pid = rfork_thread(RFPROC | RFCFDG | RFMEM, stack + PAGE_SIZE - 8,
+  if((pid = rfork_thread(RFPROC | RFCFDG | RFMEM, stack + MB(2),
                          elfldr_rfork_entry, 0))
      < 0) {
     LOG_PERROR("rfork_thread");
