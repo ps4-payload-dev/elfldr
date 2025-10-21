@@ -25,6 +25,7 @@ along with this program; see the file COPYING. If not, see
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/sched.h>
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/sysctl.h>
@@ -199,6 +200,7 @@ notify_address(const char *prefix, int port) {
  **/
 int
 main() {
+  struct sched_param sp;
   int port = 9021;
   pid_t pid;
 
@@ -211,6 +213,11 @@ main() {
   if(chdir("/")) {
     LOG_PERROR("chdir");
     return -1;
+  }
+
+  sp.sched_priority = sched_get_priority_max(SCHED_RR);
+  if(sched_setscheduler(0, SCHED_RR, &sp)) {
+    LOG_PERROR("sched_setscheduler");
   }
 
   syscall(SYS_setsid);

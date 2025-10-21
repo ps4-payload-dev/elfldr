@@ -23,6 +23,7 @@ along with this program; see the file COPYING. If not, see
 
 #include <sys/mman.h>
 #include <sys/ptrace.h>
+#include <sys/sched.h>
 #include <sys/syscall.h>
 #include <sys/user.h>
 #include <sys/wait.h>
@@ -439,6 +440,7 @@ static int
 elfldr_rfork_entry(void *progname) {
   const char *SceSpZeroConf = "/system/vsh/app/NPXS21016/eboot.bin";
   char *const argv[] = { "eboot.bin", 0 };
+  struct sched_param sp;
 
   if(syscall(0x23b, 0)) {
     klog_perror("sys_budget_set");
@@ -461,6 +463,11 @@ elfldr_rfork_entry(void *progname) {
   if(ptrace(PT_TRACE_ME, 0, 0, 0)) {
     klog_perror("ptrace");
     return 0;
+  }
+
+  sp.sched_priority = sched_get_priority_min(SCHED_RR);
+  if(sched_setscheduler(0, SCHED_RR, &sp)) {
+    LOG_PERROR("sched_setscheduler");
   }
 
   execve(SceSpZeroConf, argv, 0);
@@ -510,17 +517,19 @@ elfldr_spawn(int stdio, uint8_t *elf, size_t elf_size) {
     return -1;
   }
 
-  free(stack);
-  close(kq);
-
   while(pt_attach(pid) == -1) {
     if(errno == EBUSY) {
       continue;
     }
     LOG_PERROR("pt_attach");
     kill(pid, SIGKILL);
+    free(stack);
+    close(kq);
     return -1;
   }
+
+  free(stack);
+  close(kq);
 
   if(pt_dynlib_process_needed_and_relocate(pid)) {
     LOG_PT_PERROR(pid, "pt_dynlib_process_needed_and_relocate");
