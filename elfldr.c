@@ -252,6 +252,8 @@ elfldr_prepare_exec(pid_t pid, uint8_t *elf) {
     return -1;
   }
 
+  r.r_rsp &= ~0xfl;
+  r.r_rsp -= 8;
   r.r_rip = entry;
 
   if(pt_setregs(pid, &r)) {
