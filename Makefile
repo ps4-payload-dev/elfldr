@@ -26,7 +26,7 @@ endif
 ELF  := elfldr.elf
 BIN  := elfldr.bin
 
-CFLAGS := -fPIC -Wall -Werror -g
+CFLAGS := -fPIC -Wall -Werror -g -mstackrealign
 
 SRCS := $(wildcard *.c)
 SRCS += $(wildcard *.h)
