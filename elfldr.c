@@ -414,16 +414,17 @@ elfldr_set_heap_size(pid_t pid, uint32_t size) {
  * Set the name of a process.
  **/
 static int
-elfldr_set_procname(pid_t pid, const char* name) {
+elfldr_set_procname(pid_t pid, const char *name) {
   intptr_t buf;
 
-  if((buf=pt_mmap(pid, 0, PAGE_SIZE, PROT_READ | PROT_WRITE,
-		  MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)) == -1) {
+  if((buf = pt_mmap(pid, 0, PAGE_SIZE, PROT_READ | PROT_WRITE,
+                    MAP_ANONYMOUS | MAP_PRIVATE, -1, 0))
+     == -1) {
     LOG_PT_PERROR(pid, "pt_mmap");
     return -1;
   }
 
-  mdbg_copyin(pid, name, buf, strlen(name)+1);
+  mdbg_copyin(pid, name, buf, strlen(name) + 1);
 
   pt_syscall(pid, SYS_thr_set_name, -1, buf);
   pt_msync(pid, buf, PAGE_SIZE, MS_SYNC);
@@ -431,7 +432,6 @@ elfldr_set_procname(pid_t pid, const char* name) {
 
   return 0;
 }
-
 
 /**
  *
