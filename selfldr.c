@@ -32,6 +32,35 @@ along with this program; see the file COPYING. If not, see
 #include "log.h"
 #include "selfldr.h"
 
+/**
+ * Data structure for SELF headers.
+ **/
+typedef struct self_head {
+  uint32_t magic;
+  uint8_t version;
+  uint8_t mode;
+  uint8_t endian;
+  uint8_t attrs;
+  uint32_t key_type;
+  uint16_t header_size;
+  uint16_t meta_size;
+  uint64_t file_size;
+  uint16_t num_entries;
+  uint16_t flags;
+} self_head_t;
+
+/**
+ * Prototype for arguments passed to selfldr_rfork_entry().
+ **/
+typedef struct self_spawn_args {
+  int stdio;
+  uint8_t *self;
+  size_t self_size;
+} self_spawn_args_t;
+
+/**
+ * Duplicate the file descriptor from the given process.
+ **/
 static int
 rdup(pid_t pid, int fd) {
   int err;
@@ -45,76 +74,49 @@ rdup(pid_t pid, int fd) {
 }
 
 /**
- *
- **/
-int
-selfldr_sanity_check(uint8_t *self, size_t self_size) {
-  Elf64_Ehdr *ehdr = (Elf64_Ehdr *)self;
-
-  if(self_size < sizeof(Elf64_Ehdr)) {
-    return -1;
-  }
-
-  if(ehdr->e_ident[0] != 0x4f || ehdr->e_ident[1] != 0x15
-     || ehdr->e_ident[2] != 0x3d || ehdr->e_ident[3] != 0x1d) {
-    return -1;
-  }
-
-  return 0;
-}
-
-typedef struct self_spawn_args {
-  int stdio;
-  uint8_t *self;
-  size_t self_size;
-} self_spawn_args_t;
-
-/**
- *
+ * Entry point for the forked process.
  **/
 static int
 selfldr_rfork_entry(void *ctx) {
   self_spawn_args_t *args = (self_spawn_args_t *)ctx;
-  char path[PATH_MAX];
-  char *const argv[] = { path, 0 };
+  char *const argv[] = { 0 };
+  char *const envp[] = { 0 };
   pid_t ppid = getppid();
+  char path[PATH_MAX];
   int fd;
 
   if(syscall(0x23b, 0)) {
-    LOG_PERROR("sys_budget_set");
+    klog_perror("sys_budget_set");
     return 0;
   }
 
-  sprintf(path, "/user/temp/patload_%d.self", getpid());
-
   if(rdup(ppid, args->stdio) < 0) {
-    LOG_PERROR("rdup");
+    klog_perror("rdup");
     return 0;
   }
   if(rdup(ppid, args->stdio) < 0) {
-    LOG_PERROR("rdup");
+    klog_perror("rdup");
     return 0;
   }
   if(rdup(ppid, args->stdio) < 0) {
-    LOG_PERROR("rdup");
+    klog_perror("rdup");
     return 0;
   }
 
+  sprintf(path, "/user/temp/payload_%d.self", getpid());
   if((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0755)) < 0) {
-    LOG_PERROR("open");
+    klog_perror("open");
     return 0;
   }
-
   if(write(fd, args->self, args->self_size) != args->self_size) {
-    LOG_PERROR("write");
+    klog_perror("write");
     return 0;
   }
-
   close(fd);
 
-  execve(path, argv, 0);
+  execve(path, argv, envp);
+  perror("execve");
 
-  LOG_PERROR("execve");
   return 0;
 }
 
@@ -158,4 +160,28 @@ selfldr_spawn(int stdio, uint8_t *self, size_t self_size) {
   close(kq);
 
   return pid;
+}
+
+int
+selfldr_read(int fd, uint8_t **self, size_t *self_size) {
+  self_head_t head;
+  uint8_t *buf;
+
+  if(recv(fd, &head, sizeof(head), MSG_PEEK | MSG_WAITALL) != sizeof(head)) {
+    return -1;
+  }
+
+  if(!(buf = malloc(head.file_size))) {
+    return -1;
+  }
+
+  if(recv(fd, buf, head.file_size, MSG_WAITALL) != head.file_size) {
+    free(buf);
+    return -1;
+  }
+
+  *self = buf;
+  *self_size = head.file_size;
+
+  return 0;
 }

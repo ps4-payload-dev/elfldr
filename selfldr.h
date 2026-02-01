@@ -19,5 +19,12 @@ along with this program; see the file COPYING. If not, see
 #include <stdint.h>
 #include <unistd.h>
 
-int selfldr_sanity_check(uint8_t *self, size_t self_size);
+/**
+ * Read a SELF from the given socket.
+ **/
+int selfldr_read(int fd, uint8_t **self, size_t *self_size);
+
+/**
+ * Spawn a new process that executes the given SELF file.
+ **/
 pid_t selfldr_spawn(int stdio, uint8_t *self, size_t self_size);
