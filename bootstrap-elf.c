@@ -107,6 +107,7 @@ main(void) {
       break;
 
     default:
+      LOG_PRINTF("Unsupported firmware (0x%x)\n", fw);
       notify("Unsupported firmware (0x%x)\n", fw);
       return -1;
   }
