@@ -47,10 +47,6 @@ main(void) {
   LOG_PUTS("Bootstrapping elfldr.elf...");
 
   switch(fw & 0xffff0000) {
-    case 0x4710000:
-    case 0x4720000:
-    case 0x4730000:
-    case 0x4740000:
     case 0x5050000:
     case 0x5500000:
     case 0x5550000:
