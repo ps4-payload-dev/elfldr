@@ -47,6 +47,16 @@ main(void) {
   LOG_PUTS("Bootstrapping elfldr.elf...");
 
   switch(fw & 0xffff0000) {
+    case 0x4710000:
+    case 0x4720000:
+    case 0x4730000:
+    case 0x4740000:
+      if((pt_patch = kernel_find_pattern(
+            KERNEL_ADDRESS_IMAGE_BASE, KERNEL_IMAGE_SIZE,
+            "48B8361000007E020000??????????????????????????????????????"))) {
+        pt_patch += 43;
+      }
+      break;
     case 0x5050000:
     case 0x5500000:
     case 0x5550000:
