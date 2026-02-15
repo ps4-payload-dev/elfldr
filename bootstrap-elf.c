@@ -28,6 +28,11 @@ along with this program; see the file COPYING. If not, see
 #include "socksrv_elf.c"
 
 /**
+ *
+ **/
+static char *const argv[] = { "elfldr.elf", 0 };
+
+/**
  * Entry point to the payload.
  **/
 int
@@ -179,7 +184,7 @@ main(void) {
 
   if(!err) {
     signal(SIGCHLD, SIG_IGN);
-    err = elfldr_spawn(-1, socksrv_elf, socksrv_elf_len);
+    err = elfldr_spawn(-1, argv, socksrv_elf, socksrv_elf_len);
   }
 
   if(kernel_set_ucred_caps(-1, caps)) {

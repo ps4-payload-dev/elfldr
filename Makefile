@@ -33,15 +33,15 @@ SRCS += $(wildcard *.h)
 
 all: $(ELF) $(BIN)
 
-socksrv.elf: socksrv.c elfldr.c pt.c selfldr.c notify.c
-	$(CC) $(CFLAGS) $^ -o $@
+socksrv.elf: socksrv.c elfldr.c pt.c uri.c selfldr.c notify.c
+	$(CC) $(CFLAGS) -lSceSsl2 -lSceHttp2 $^ -o $@
 
 bootstrap-elf.c: socksrv_elf.c
 
 socksrv_elf.c: socksrv.elf
 	xxd -i $^ > $@
 
-elfldr_elf.c: elfldr.elf
+elfldr_elf.c: $(ELF)
 	xxd -i $^ > $@
 
 $(ELF): bootstrap-elf.c elfldr.c pt.c notify.c

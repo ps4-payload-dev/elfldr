@@ -40,6 +40,20 @@ john@localhost:ps4-payload-elfldr$ export PS4_PORT=9020
 john@localhost:ps4-payload-elfldr$ make test
 ```
 
+## Usage examples
+```console
+john@localhost:~$ export PS4_HOST=ps4
+john@localhost:~$ export PS4_PORT=9021
+john@localhost:~$ export PS4_PAYLOAD=payload.elf # from local storage
+john@localhost:~$ nc -q0 $PS4_HOST $PS4_PORT < $PS4_PAYLOAD
+john@localhost:~$
+john@localhost:~$ export PS4_PAYLOAD=file:/data/payload.elf # from console storage
+john@localhost:~$ echo "$PS4_PAYLOAD" | nc -q0 $PS4_HOST $PS4_PORT
+john@localhost:~$
+john@localhost:~$ export PS4_PAYLOAD=https://github.com/ps5-payload-dev/ftpsrv/releases/latest/download/ftpsrv-ps4.elf
+john@localhost:~$ echo "$PS4_PAYLOAD" | nc -q0 $PS4_HOST $PS4_PORT
+```
+
 ## Reporting Bugs
 If you encounter problems with ps4-payload-elfldr, please [file a github issue][issues].
 If you plan on sending pull requests which affect more than a few lines of code,

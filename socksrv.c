@@ -18,6 +18,7 @@ along with this program; see the file COPYING. If not, see
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <limits.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdint.h>
@@ -34,21 +35,157 @@ along with this program; see the file COPYING. If not, see
 #include "log.h"
 #include "notify.h"
 #include "selfldr.h"
+#include "uri.h"
 
 /**
- * Magic number that ELF and SELF files starts with (little endian).
+ * Magic number that socket input starts with (little endian).
  **/
-#define PAYLOAD_MAGIC_ELF 0x464C457F
-#define PAYLOAD_MAGIC_PS4_SELF 0x1D3D154F
+#define PAYLOAD_MAGIC_ELF 0x464C457F  // ELF payload
+#define PAYLOAD_MAGIC_SELF 0x1D3D154F // SELF payload
+#define PAYLOAD_MAGIC_FILE 0x656C6966 // file:// URI
+#define PAYLOAD_MAGIC_HTTP 0x70747468 // http:// or https:// URI
 
+/**
+ * Decode an escaped argument.
+ **/
+static char *
+args_decode(const char *s) {
+  size_t length = strlen(s);
+  char *arg = malloc(length + 1);
+  size_t off = 0;
+  int escape = 0;
+
+  for(size_t i = 0; i < length; i++) {
+    if(s[i] == '\\' && !escape) {
+      escape = 1;
+    } else {
+      arg[off++] = s[i];
+      escape = 0;
+    }
+  }
+
+  arg[off] = 0;
+  return arg;
+}
+
+/**
+ *
+ **/
+static int
+args_split(const char *args, char **argv, size_t size) {
+  char *buf = strdup(args);
+  size_t len = strlen(buf);
+  int escape = 0;
+  int argc = 0;
+
+  memset(argv, 0, size * sizeof(char *));
+  for(int i = 0; i < len && argc < size; i++) {
+    if(escape) {
+      escape = 0;
+      continue;
+    }
+
+    if(buf[i] == '\\') {
+      escape = 1;
+      continue;
+    }
+
+    if(buf[i] == ' ') {
+      buf[i] = 0;
+      continue;
+    }
+
+    if(buf[i] && !i) {
+      argv[argc++] = buf + i;
+      continue;
+    }
+
+    if(buf[i] && !buf[i - 1]) {
+      argv[argc++] = buf + i;
+    }
+  }
+
+  for(int i = 0; i < argc; i++) {
+    argv[i] = args_decode(argv[i]);
+  }
+
+  free(buf);
+
+  return argc;
+}
+
+/**
+ * Spawn an ELF or a SELF payload.
+ **/
+static pid_t
+payload_spawn(char *filename, char *args, int fd, uint8_t *payload,
+              size_t payload_size) {
+  int magic = *((int *)payload);
+  char *argv[255 + 2] = { 0 };
+  pid_t pid = -1;
+
+  argv[0] = filename;
+  args_split(args, argv + 1, 255);
+
+  if(magic == PAYLOAD_MAGIC_ELF) {
+    pid = elfldr_spawn(fd, argv, payload, payload_size);
+
+  } else if(magic == PAYLOAD_MAGIC_SELF) {
+    pid = selfldr_spawn(fd, argv, payload, payload_size);
+  }
+
+  for(int i = 1; argv[i]; i++) {
+    free(argv[i]);
+  }
+
+  return pid;
+}
+
+/**
+ *
+ **/
+static int
+payload_readuri(int fd, char *uri, size_t size) {
+  char c;
+  int n;
+
+  for(int i = 0; i < size; i++) {
+    if((n = read(fd, &c, 1)) < 0) {
+      return -1;
+    }
+    if(n == 0) {
+      uri[i] = 0;
+      return 0;
+    }
+    if(c == '\r') {
+      continue;
+    }
+    if(c == '\n') {
+      uri[i] = 0;
+      return 0;
+    }
+
+    uri[i] = c;
+  }
+
+  return -1;
+}
+
+/**
+ * Process connection input.
+ **/
 static void
 on_connection(int fd) {
+  char *filename = "payload.elf";
+  char uri[PATH_MAX + 1] = { 0 };
   uint8_t *buf = 0;
   size_t len = 0;
   int optval = 1;
+  char *args = "";
   int magic = 0;
 
   if(setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval)) < 0) {
+    LOG_PERROR("setsockopt");
     return;
   }
 
@@ -59,29 +196,40 @@ on_connection(int fd) {
     return;
   }
 
-  if(magic == PAYLOAD_MAGIC_ELF) {
+  if(magic == PAYLOAD_MAGIC_FILE || magic == PAYLOAD_MAGIC_HTTP) {
+    if(payload_readuri(fd, uri, PATH_MAX)
+       || uri_get_content(uri, &buf, &len)) {
+      LOG_PERROR("read_uri");
+      write(fd, "[elfldr.elf] Error reading URI payload\n\r\0", 41);
+    }
+
+  } else if(magic == PAYLOAD_MAGIC_ELF) {
     if(elfldr_read(fd, &buf, &len)) {
       LOG_PERROR("elfldr_read");
-      write(fd, "[elfldr.elf] Error reading ELF file\n\r\0", 38);
-    } else {
-      if(elfldr_spawn(fd, buf, len) < 0) {
-        write(fd, "[elfldr.elf] Error running ELF file\n\r\0", 38);
-      }
+      write(fd, "[elfldr.elf] Error reading ELF payload\n\r\0", 41);
     }
-  } else if(magic == PAYLOAD_MAGIC_PS4_SELF) {
+
+  } else if(magic == PAYLOAD_MAGIC_SELF) {
     if(selfldr_read(fd, &buf, &len)) {
       LOG_PERROR("selfldr_read");
-      write(fd, "[elfldr.elf] Error reading SELF file\n\r\0", 39);
-    } else {
-      if(selfldr_spawn(fd, buf, len) < 0) {
-        write(fd, "[elfldr.elf] Error running SELF file\n\r\0", 39);
-      }
+      write(fd, "[elfldr.elf] Error reading SELF payload\n\r\0", 42);
     }
   } else {
     write(fd, "[elfldr.elf] Unknown payload format\n\r\0", 38);
   }
 
   if(buf) {
+    if(!(filename = uri_get_filename(uri))) {
+      filename = strdup("payload.elf");
+    }
+    if(!(args = uri_get_param(uri, "args"))) {
+      args = strdup("");
+    }
+    if(payload_spawn(filename, args, fd, buf, len) < 0) {
+      write(fd, "[elfldr.elf] Error spawning payload\n\r\0", 38);
+    }
+    free(filename);
+    free(args);
     free(buf);
   }
 }

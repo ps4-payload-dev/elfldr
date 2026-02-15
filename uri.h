@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 John Törnblom
+/* Copyright (C) 2026 John Törnblom
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -16,26 +16,22 @@ along with this program; see the file COPYING. If not, see
 
 #pragma once
 
-#include <stdint.h>
 #include <unistd.h>
 
 /**
- * Spawn a new process that executes the given ELF file.
+ * Read the content from the given URI. Supported protocols are:
+ * - file://
+ * - http://
+ * - https://
  **/
-pid_t elfldr_spawn(int stdio, char *const argv[], uint8_t *elf,
-                   size_t elf_size);
+int uri_get_content(const char *uri, uint8_t **content, size_t *content_size);
 
 /**
- * Execute an ELF file in a given process.
+ * Get the value of a named parameter associated with the given URI.
  **/
-int elfldr_exec(pid_t pid, int stdio, uint8_t *elf, size_t elf_size);
+char *uri_get_param(const char *uri, const char *name);
 
 /**
- * Read an ELF from the given socket.
+ * Get the filename associated with the given URI.
  **/
-int elfldr_read(int fd, uint8_t **elf, size_t *elf_size);
-
-/**
- * Ensure the data is in the ELF format.
- **/
-int elfldr_sanity_check(uint8_t *elf, size_t elf_size);
+char *uri_get_filename(const char *uri);

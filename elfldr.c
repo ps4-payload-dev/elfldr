@@ -270,8 +270,7 @@ elfldr_prepare_exec(pid_t pid, uint8_t *elf) {
  **/
 static int
 elfldr_raise_privileges(pid_t pid) {
-  unsigned char caps[16] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+  unsigned char caps[16] = { 0 };
 
   if(kernel_set_proc_rootdir(pid, KERNEL_ADDRESS_ROOTVNODE)) {
     klog_puts("kernel_set_proc_rootdir failed");
@@ -290,6 +289,13 @@ elfldr_raise_privileges(pid_t pid) {
     klog_puts("kernel_set_ucred_uid failed");
     return -1;
   }
+
+  if(kernel_get_ucred_caps(pid, caps)) {
+    return -1;
+  }
+  caps[5]  = 0x1c; // ??
+  caps[7]  = 0x40; // jail related?
+  caps[15] |= 0x40; // jitshm
   if(kernel_set_ucred_caps(pid, caps)) {
     return -1;
   }
@@ -437,9 +443,8 @@ elfldr_set_procname(pid_t pid, const char *name) {
  *
  **/
 static int
-elfldr_rfork_entry(void *progname) {
+elfldr_rfork_entry(void *argv) {
   const char *SceSpZeroConf = "/system/vsh/app/NPXS21016/eboot.bin";
-  char *const argv[] = { "eboot.bin", 0 };
   struct sched_param sp;
 
   if(syscall(0x23b, 0)) {
@@ -480,7 +485,7 @@ elfldr_rfork_entry(void *progname) {
  * Execute an ELF inside a new process.
  **/
 pid_t
-elfldr_spawn(int stdio, uint8_t *elf, size_t elf_size) {
+elfldr_spawn(int stdio, char *const argv[], uint8_t *elf, size_t elf_size) {
   uint8_t int3instr = 0xcc;
   struct kevent evt;
   intptr_t brkpoint;
@@ -501,7 +506,7 @@ elfldr_spawn(int stdio, uint8_t *elf, size_t elf_size) {
   }
 
   if((pid = rfork_thread(RFPROC | RFCFDG | RFMEM, stack + MB(2),
-                         elfldr_rfork_entry, 0))
+                         elfldr_rfork_entry, (void *)argv))
      < 0) {
     LOG_PERROR("rfork_thread");
     free(stack);
