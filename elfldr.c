@@ -293,8 +293,8 @@ elfldr_raise_privileges(pid_t pid) {
   if(kernel_get_ucred_caps(pid, caps)) {
     return -1;
   }
-  caps[5]  = 0x1c; // ??
-  caps[7]  = 0x40; // jail related?
+  caps[5] = 0x1c;   // ??
+  caps[7] = 0x40;   // jail related?
   caps[15] |= 0x40; // jitshm
   if(kernel_set_ucred_caps(pid, caps)) {
     return -1;
