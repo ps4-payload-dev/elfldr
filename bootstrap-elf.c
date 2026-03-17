@@ -71,11 +71,17 @@ main(void) {
         pt_patch += 43;
       }
       break;
+    case 0x5000000:
+    case 0x5010000:
+    case 0x5030000:
     case 0x5050000:
+    case 0x5070000:
     case 0x5500000:
+    case 0x5530000:
     case 0x5550000:
     case 0x5560000:
     case 0x6000000:
+    case 0x6020000:
     case 0x6200000:
     case 0x6500000:
     case 0x6510000:
