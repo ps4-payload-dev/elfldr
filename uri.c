@@ -74,7 +74,7 @@ http2_init(http2_ctx_t *ctx, const char *agent, const char *method,
   ctx->tmplId = -1;
   ctx->reqId = -1;
 
-  if((err=sceNetInit()) < 0) {
+  if((err = sceNetInit()) < 0) {
     return -1;
   }
 
