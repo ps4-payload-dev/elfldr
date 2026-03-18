@@ -40,10 +40,11 @@ along with this program; see the file COPYING. If not, see
 /**
  * Magic number that socket input starts with (little endian).
  **/
-#define PAYLOAD_MAGIC_ELF 0x464C457F  // ELF payload
+#define PAYLOAD_MAGIC_ELF  0x464C457F // ELF payload
 #define PAYLOAD_MAGIC_SELF 0x1D3D154F // SELF payload
 #define PAYLOAD_MAGIC_FILE 0x656C6966 // file:// URI
 #define PAYLOAD_MAGIC_HTTP 0x70747468 // http:// or https:// URI
+#define PAYLOAD_MAGIC_POST 0x54534F50 // POST
 
 /**
  * Decode an escaped argument.
@@ -172,6 +173,61 @@ payload_readuri(int fd, char *uri, size_t size) {
 }
 
 /**
+ * Read HTTP POST payload.
+ **/
+static int
+payload_readpost(int fd, uint8_t **buf, size_t *size) {
+  char headers[4096] = { 0 };
+  size_t headers_len = 0;
+  size_t content_len = 0;
+  char *val;
+  int n;
+
+  while(headers_len < sizeof(headers) - 1) {
+    if(read(fd, &headers[headers_len], 1) != 1) {
+      return -1;
+    }
+    headers_len++;
+    headers[headers_len] = 0;
+
+    if(headers_len >= 4 && !memcmp(&headers[headers_len - 4], "\r\n\r\n", 4)) {
+      break;
+    }
+  }
+
+  if(headers_len == sizeof(headers) - 1) {
+    return -1;
+  }
+
+  if((val = strstr(headers, "Content-Length:")) ||
+     (val = strstr(headers, "content-length:"))) {
+    content_len = strtoul(val + 15, NULL, 10);
+  }
+
+  if(!content_len) {
+    return -1;
+  }
+
+  if(!(*buf = malloc(content_len))) {
+    return -1;
+  }
+
+  *size = 0;
+  while(*size < content_len) {
+    if((n = read(fd, *buf + *size, content_len - *size)) <= 0) {
+      free(*buf);
+      *buf = 0;
+      return -1;
+    }
+    *size += n;
+  }
+
+  write(fd, "HTTP/1.1 200 OK\r\n\r\n", 19);
+
+  return 0;
+}
+
+/**
  * Process connection input.
  **/
 static void
@@ -202,13 +258,16 @@ on_connection(int fd) {
       LOG_PERROR("read_uri");
       write(fd, "[elfldr.elf] Error reading URI payload\n\r\0", 41);
     }
-
+  } else if(magic == PAYLOAD_MAGIC_POST) {
+    if(payload_readpost(fd, &buf, &len)) {
+      LOG_PERROR("payload_readpost");
+      write(fd, "[elfldr.elf] Error reading POST payload\n\r\0", 42);
+    }
   } else if(magic == PAYLOAD_MAGIC_ELF) {
     if(elfldr_read(fd, &buf, &len)) {
       LOG_PERROR("elfldr_read");
       write(fd, "[elfldr.elf] Error reading ELF payload\n\r\0", 41);
     }
-
   } else if(magic == PAYLOAD_MAGIC_SELF) {
     if(selfldr_read(fd, &buf, &len)) {
       LOG_PERROR("selfldr_read");
@@ -283,49 +342,6 @@ serve_elfldr(uint16_t port) {
   }
 
   return close(srvfd);
-}
-
-/**
- * Fint the pid of a process with the given name.
- **/
-static pid_t
-find_pid(const char *name) {
-  int mib[4] = { 1, 14, 8, 0 };
-  pid_t mypid = getpid();
-  pid_t pid = -1;
-  size_t buf_size;
-  uint8_t *buf;
-
-  if(sysctl(mib, 4, 0, &buf_size, 0, 0)) {
-    LOG_PERROR("sysctl");
-    return -1;
-  }
-
-  if(!(buf = malloc(buf_size))) {
-    LOG_PERROR("malloc");
-    return -1;
-  }
-
-  if(sysctl(mib, 4, buf, &buf_size, 0, 0)) {
-    LOG_PERROR("sysctl");
-    free(buf);
-    return -1;
-  }
-
-  for(uint8_t *ptr = buf; ptr < (buf + buf_size);) {
-    int ki_structsize = *(int *)ptr;
-    pid_t ki_pid = *(pid_t *)&ptr[72];
-    char *ki_tdname = (char *)&ptr[447];
-
-    ptr += ki_structsize;
-    if(!strcmp(name, ki_tdname) && ki_pid != mypid) {
-      pid = ki_pid;
-    }
-  }
-
-  free(buf);
-
-  return pid;
 }
 
 static int
