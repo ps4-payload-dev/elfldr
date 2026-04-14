@@ -374,14 +374,37 @@ notify_address(const char *prefix, int port) {
  *
  **/
 int
-main() {
+main(int argc, char* argv[]) {
   struct sched_param sp;
   int port = 9021;
+  int notify_user = 1;
   pid_t pid;
+  char c;
 
   syscall(SYS_thr_set_name, -1, "elfldr.elf");
   signal(SIGCHLD, SIG_IGN);
   signal(SIGPIPE, SIG_IGN);
+
+  while((c=getopt(argc, argv, "p:qh")) != -1) {
+    switch(c) {
+    case 'p':
+      port = atoi(optarg);
+      break;
+
+    case 'q':
+      notify_user = 0;
+      break;
+
+    case 'h':
+    default:
+      LOG_PRINTF("usage: %s [-p PORT] [-q]\n", argv[0]);
+      LOG_PUTS("");
+      LOG_PUTS("options:");
+      LOG_PUTS("    -p PORT    Bind the socket server to the given PORT (default: 9021)");
+      LOG_PUTS("    -q         Do not send an on-screen notification when the server starts");
+      return EXIT_FAILURE;
+    }
+  }
 
   LOG_PRINTF("Socket server was compiled at %s %s\n", __DATE__, __TIME__);
 
@@ -404,7 +427,9 @@ main() {
     sleep(1);
   }
 
-  notify_address("Serving ELF loader on", port);
+  if(notify_user) {
+    notify_address("Serving ELF loader on", port);
+  }
   while(1) {
     serve_elfldr(port);
     sleep(3);
