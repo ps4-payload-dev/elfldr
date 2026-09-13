@@ -313,11 +313,16 @@ uri_get_path(const char *uri) {
 
 char *
 uri_get_filename(const char *uri) {
-  size_t len = strlen(uri);
   const char *begin = 0;
   const char *end = 0;
+  size_t len;
+
+  if(!(len=strlen(uri))) {
+    return 0;
+  }
 
   end = uri + len;
+
   for(int i = 0; i < len; i++) {
     if(uri[i] == '/') {
       begin = uri + i + 1;
