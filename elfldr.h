@@ -20,6 +20,11 @@ along with this program; see the file COPYING. If not, see
 #include <unistd.h>
 
 /**
+ * Find the id of a process with the given name.
+ **/
+pid_t elfldr_find_pid(const char* name);
+
+/**
  * Spawn a new process that executes the given ELF file.
  **/
 pid_t elfldr_spawn(int stdio, char *const argv[], uint8_t *elf,
