@@ -44,6 +44,8 @@ along with this program; see the file COPYING. If not, see
 #define PAYLOAD_MAGIC_SELF 0x1D3D154F // SELF payload
 #define PAYLOAD_MAGIC_FILE 0x656C6966 // file:// URI
 #define PAYLOAD_MAGIC_HTTP 0x70747468 // http:// or https:// URI
+#define PAYLOAD_MAGIC_HTTP_GET 0x20544547 // HTTP GET request
+
 
 /**
  * Decode an escaped argument.
@@ -172,6 +174,51 @@ payload_readuri(int fd, char *uri, size_t size) {
 }
 
 /**
+ * Read a HTTP (GET) request.
+ **/
+static int
+payload_readhttp(int fd, char* uri, size_t size) {
+  const char *headers = ("HTTP/1.1 200 OK\r\n"
+			 "Content-Type: text/plain; charset=utf-8\r\n"
+			 "Access-Control-Allow-Origin: *\r\n"
+			 "Connection: close\r\n"
+			 "\r\n");
+  char buf[PATH_MAX+255] = {0};
+  char* param_uri;
+  ssize_t n;
+  char* p;
+
+  if((n=read(fd, buf, sizeof(buf)-1)) < 0) {
+    return -1;
+  }
+
+  if(memcmp(buf, "GET ", 4)) {
+    return -1;
+  }
+
+  if(!(p=strchr(buf+4, ' '))) {
+    return -1;
+  }
+
+  if(strstr(buf, "user-agent: rnps-action-cards")) {
+    return -1;
+  }
+
+  *p = 0;
+
+  if((param_uri=uri_get_param(buf+4, "uri"))) {
+    strncpy(uri, param_uri, size);
+    free(param_uri);
+  } else {
+    snprintf(uri, size, "file:/%s", buf+4);
+  }
+
+  write(fd, headers, strlen(headers));
+
+  return 0;
+}
+
+/**
  * Process connection input.
  **/
 static void
@@ -203,7 +250,13 @@ on_connection(int fd) {
       write(fd, "[elfldr.elf] Error reading URI payload\n\r\0", 41);
     }
 
-  } else if(magic == PAYLOAD_MAGIC_ELF) {
+  }else if (magic == PAYLOAD_MAGIC_HTTP_GET){
+    if(payload_readhttp(fd, uri, PATH_MAX) || uri_get_content(uri, &buf, &len)) {
+      LOG_PERROR("payload_readhttp");
+      write(fd, "[elfldr.elf] Error reading HTTP payload\n\r\0", 42);
+    }
+  }
+   else if(magic == PAYLOAD_MAGIC_ELF) {
     if(elfldr_read(fd, &buf, &len)) {
       LOG_PERROR("elfldr_read");
       write(fd, "[elfldr.elf] Error reading ELF payload\n\r\0", 41);
