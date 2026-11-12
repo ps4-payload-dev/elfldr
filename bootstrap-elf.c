@@ -131,6 +131,7 @@ main(void) {
     case 0x13500000:
     case 0x13520000:
     case 0x14000000:
+    case 0x14020000:
       if((pt_patch = kernel_find_pattern(
               KERNEL_ADDRESS_IMAGE_BASE, KERNEL_IMAGE_SIZE,
               "48b8361000007e020000????????????????????????"
